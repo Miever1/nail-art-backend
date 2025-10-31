@@ -44,7 +44,7 @@ jobs:
           path: ./bundle
 
       - name: Write .env (staging)
-        run: echo "${{ secrets.ENV_STAGING }}" > ./bundle/.env
+        run: echo "${{ secrets.ENV_PROD }}" > ./bundle/.env
 
       - name: Copy bundle to EC2 (staging)
         uses: appleboy/scp-action@v0.1.7
@@ -59,10 +59,10 @@ jobs:
       - name: Install deps & reload PM2 (staging)
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST_STAGING }}
-          username: ${{ secrets.SSH_USER_STAGING }}
-          port: ${{ secrets.SSH_PORT_STAGING }}
-          key: ${{ secrets.SSH_KEY_STAGING }}
+          host: ${{ secrets.SSH_HOST_PROD }}
+          username: ${{ secrets.SSH_USER_PROD }}
+          port: ${{ secrets.SSH_PORT_PROD }}
+          key: ${{ secrets.SSH_KEY_PROD }}
           script: |
             cd /home/ubuntu/nail-art-backend-staging
             npm ci --omit=dev
