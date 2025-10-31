@@ -1,4 +1,4 @@
-name: CI & Deploy (NestJS)
+name: CI & Deploy (single env)
 
 on:
   push:
@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -33,9 +34,8 @@ jobs:
           name: dist
           path: bundle
 
-  deploy-staging:
+  deploy:
     needs: build
-    if: startsWith(github.ref, 'refs/heads/feature/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -43,46 +43,10 @@ jobs:
           name: dist
           path: ./bundle
 
-      - name: Write .env (staging)
+      - name: Write .env
         run: echo "${{ secrets.ENV_PROD }}" > ./bundle/.env
 
-      - name: Copy bundle to EC2 (staging)
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST_PROD }}
-          username: ${{ secrets.SSH_USER_PROD }}
-          port: ${{ secrets.SSH_PORT_PROD }}
-          key: ${{ secrets.SSH_KEY_PROD }}
-          source: "bundle/**"
-          target: "/home/ubuntu/nail-art-backend-staging"
-
-      - name: Install deps & reload PM2 (staging)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST_PROD }}
-          username: ${{ secrets.SSH_USER_PROD }}
-          port: ${{ secrets.SSH_PORT_PROD }}
-          key: ${{ secrets.SSH_KEY_PROD }}
-          script: |
-            cd /home/ubuntu/nail-art-backend-staging
-            npm ci --omit=dev
-            pm2 startOrReload /home/ubuntu/nail-art-backend-staging/ecosystem.config.js --only nail-art-backend-staging
-            pm2 save
-
-  deploy-prod:
-    needs: build
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: ./bundle
-
-      - name: Write .env (prod)
-        run: echo "${{ secrets.ENV_PROD }}" > ./bundle/.env
-
-      - name: Copy bundle to EC2 (prod)
+      - name: Copy bundle to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST_PROD }}
@@ -91,8 +55,10 @@ jobs:
           key: ${{ secrets.SSH_KEY_PROD }}
           source: "bundle/**"
           target: "/home/ubuntu/nail-art-backend"
+          strip_components: 1
+          overwrite: true
 
-      - name: Install deps & reload PM2 (prod)
+      - name: Install deps & reload PM2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST_PROD }}
@@ -100,6 +66,7 @@ jobs:
           port: ${{ secrets.SSH_PORT_PROD }}
           key: ${{ secrets.SSH_KEY_PROD }}
           script: |
+            set -e
             cd /home/ubuntu/nail-art-backend
             npm ci --omit=dev
             pm2 startOrReload /home/ubuntu/nail-art-backend/ecosystem.config.js --only nail-art-backend
