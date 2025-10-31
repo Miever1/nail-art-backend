@@ -1,0 +1,79 @@
+name: Deploy to Prod (master)
+
+on:
+  push:
+    branches: 
+      - master
+      - feature/*
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint (optional)
+        run: npm run lint --if-present
+
+      - name: Test (optional)
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build
+
+      - name: Package artifact
+        run: |
+          mkdir -p bundle
+          cp -r dist package.json package-lock.json ecosystem.config.js bundle/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: bundle
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ./bundle
+
+      - name: Write .env (prod)
+        run: |
+          echo "${{ secrets.ENV_PROD }}" > ./bundle/.env
+
+      - name: Copy bundle to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST_PROD }}
+          username: ${{ secrets.SSH_USER_PROD }}
+          port: ${{ secrets.SSH_PORT_PROD }}
+          key: ${{ secrets.SSH_KEY_PROD }}
+          source: "bundle/*"
+          target: "/home/ubuntu/nail-art-backend"
+
+      - name: Install prod deps & restart PM2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST_PROD }}
+          username: ${{ secrets.SSH_USER_PROD }}
+          port: ${{ secrets.SSH_PORT_PROD }}
+          key: ${{ secrets.SSH_KEY_PROD }}
+          script: |
+            cd /home/ubuntu/nail-art-backend
+            npm ci --omit=dev
+            pm2 startOrReload /home/ubuntu/nail-art-backend/../ecosystem.config.js --only nail-art-backend
+            pm2 save
