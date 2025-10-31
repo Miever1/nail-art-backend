@@ -49,10 +49,10 @@ jobs:
       - name: Copy bundle to EC2 (staging)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST_STAGING }}
-          username: ${{ secrets.SSH_USER_STAGING }}
-          port: ${{ secrets.SSH_PORT_STAGING }}
-          key: ${{ secrets.SSH_KEY_STAGING }}
+          host: ${{ secrets.SSH_HOST_PROD }}
+          username: ${{ secrets.SSH_USER_PROD }}
+          port: ${{ secrets.SSH_PORT_PROD }}
+          key: ${{ secrets.SSH_KEY_PROD }}
           source: "bundle/**"
           target: "/home/ubuntu/nail-art-backend-staging"
 
