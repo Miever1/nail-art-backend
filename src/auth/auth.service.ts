@@ -11,10 +11,7 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string) {
-    const user = await this.users['usersRepository'].findOne({
-      where: { email: email.trim().toLowerCase() },
-      select: ['id', 'name', 'email', 'password'],
-    });
+    const user = await this.users.findByEmailWithPassword(email);
     if (!user) throw new UnauthorizedException('Invalid email or password');
 
     const ok = await bcrypt.compare(password, user.password);
@@ -25,11 +22,7 @@ export class AuthService {
 
     return {
       access_token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
+      user: { id: user.id, email: user.email, name: user.name },
     };
   }
 }

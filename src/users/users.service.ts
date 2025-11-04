@@ -31,4 +31,11 @@ export class UsersService {
 
     return this.usersRepository.save(newUser);
   }
+
+  async findByEmailWithPassword(email: string) {
+    return this.usersRepository.findOne({
+      where: { email: email.trim().toLowerCase() },
+      select: ['id', 'name', 'email', 'password'],
+    });
+  }
 }
